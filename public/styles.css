@@ -295,14 +295,24 @@ form.fields { padding: 12px 20px 0; display: flex; flex-direction: column; gap: 
 .geo-actions { display: flex; gap: 8px; }
 .geo-actions .btn { height: 44px; border-radius: 14px; font-size: 15px; }
 /* ---------- zdieľanie aplikácie ---------- */
-.share-qr { align-self: center; background: #fff; padding: 14px; border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); }
-.share-qr:empty { display: none; }
-.share-qr svg.qr { display: block; width: 200px; height: 200px; }
-.share-url { text-align: center; font-weight: 700; font-size: 15px; overflow-wrap: anywhere; color: var(--muted); }
-.share-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-.share-chip {
-  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px;
-  border-radius: 16px; background: var(--surface); color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 700;
+.share-app { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 4px 0 4px; }
+.share-app p.small { max-width: 300px; }
+.share-qr {
+  margin-top: 10px; background: #fff; padding: 18px; border-radius: 28px;
+  box-shadow: 0 1px 0 rgba(23,23,26,.04), 0 12px 32px rgba(122,20,24,.12), inset 0 0 0 1px rgba(23,23,26,.06);
 }
-.share-chip .dot { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 16px; font-weight: 800; }
+.share-qr:empty { display: none; }
+.share-qr svg.qr { display: block; width: 208px; height: 208px; }
+.share-url {
+  margin-top: 4px; padding: 6px 14px; border-radius: 999px; background: var(--surface);
+  font-size: 14px; font-weight: 700; color: var(--muted); overflow-wrap: anywhere;
+}
+.sheet .btn-share {
+  margin-top: 12px; justify-content: center; height: 58px; border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand-dot), var(--brand)); color: #fff; font-size: 17px; font-weight: 800;
+  box-shadow: 0 10px 24px rgba(227,38,43,.28), inset 0 1px 0 rgba(255,255,255,.18);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.sheet .btn-share svg { width: 20px; height: 20px; }
+.sheet .btn-share:active { box-shadow: 0 4px 12px rgba(227,38,43,.24); }
 .overlay .sheet { max-height: 100dvh; overflow-y: auto; }
