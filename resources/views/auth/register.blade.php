@@ -7,7 +7,11 @@
         @csrf
         <div class="empty-text">
             <h2>Peňaženka bez plastu</h2>
-            <p>Vytvorte si účet a majte kartičky vždy pri sebe — aj offline.</p>
+            @if (auth()->user()?->isGuest())
+                <p>Vytvorte si účet a karty z tohto zariadenia budú v bezpečí a na každom zariadení.</p>
+            @else
+                <p>Vytvorte si účet a majte kartičky vždy pri sebe — aj offline.</p>
+            @endif
         </div>
 
         <label class="field">
@@ -33,6 +37,7 @@
         <div class="actions">
             <button type="submit" class="btn btn-dark">Vytvoriť účet</button>
             <a href="/login" class="btn btn-ghost">Už mám účet – prihlásiť sa</a>
+            <a href="/" class="btn btn-ghost">Pokračovať bez účtu</a>
         </div>
     </form>
 @endsection

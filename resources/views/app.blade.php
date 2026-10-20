@@ -10,7 +10,7 @@
 <div id="toast" role="status" hidden></div>
 
 <script>
-    window.APP_USER = @json(['id' => auth()->id(), 'name' => auth()->user()->name, 'email' => auth()->user()->email]);
+    window.APP_USER = @json(auth()->user()?->toAppUser());
 </script>
 <script src="/vendor/jsbarcode.min.js" defer></script>
 <script src="/vendor/qrcode.js" defer></script>

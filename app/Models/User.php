@@ -35,4 +35,40 @@ class User extends Authenticatable
     {
         return $this->hasMany(Card::class);
     }
+
+    /** Hosť používa appku bez registrácie – karty má len na tomto zariadení. */
+    public function isGuest(): bool
+    {
+        return $this->email === null;
+    }
+
+    /**
+     * Údaje pre frontend (window.APP_USER).
+     *
+     * @return array{id: int, name: ?string, email: ?string, guest: bool}
+     */
+    public function toAppUser(): array
+    {
+        return ['id' => $this->id, 'name' => $this->name, 'email' => $this->email, 'guest' => $this->isGuest()];
+    }
+
+    /**
+     * Prevezme karty iného účtu (hosťa z tohto zariadenia) a ten zmaže.
+     * Karty s rovnakým číslom, aké už účet má, sa nezdvojujú.
+     */
+    public function absorb(User $other): void
+    {
+        $numbers = $this->cards()->pluck('number')->all();
+
+        foreach ($other->cards as $card) {
+            if (in_array($card->number, $numbers, true)) {
+                $card->delete();
+            } else {
+                $card->user()->associate($this)->save();
+                $numbers[] = $card->number;
+            }
+        }
+
+        $other->delete();
+    }
 }

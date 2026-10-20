@@ -7,7 +7,11 @@
         @csrf
         <div class="empty-text">
             <h2>Vitajte späť</h2>
-            <p>Prihláste sa a vaše kartičky budú na každom zariadení.</p>
+            @if (auth()->user()?->isGuest())
+                <p>Prihláste sa a karty z tohto zariadenia sa pridajú k vášmu účtu.</p>
+            @else
+                <p>Prihláste sa a vaše kartičky budú na každom zariadení.</p>
+            @endif
         </div>
 
         <label class="field">
@@ -25,6 +29,7 @@
         <div class="actions">
             <button type="submit" class="btn btn-dark">Prihlásiť sa</button>
             <a href="/register" class="btn btn-ghost">Nemám účet – registrovať sa</a>
+            <a href="/" class="btn btn-ghost">Pokračovať bez účtu</a>
         </div>
     </form>
 @endsection

@@ -24,9 +24,32 @@ class CardApiTest extends TestCase
         ], $overrides);
     }
 
-    public function test_guest_cannot_access_cards(): void
+    public function test_visitor_without_account_has_no_cards(): void
     {
-        $this->getJson('/api/cards')->assertUnauthorized();
+        $this->getJson('/api/cards')->assertOk()->assertJsonCount(0, 'cards');
+        $this->putJson('/api/cards/1', $this->payload())->assertUnauthorized();
+    }
+
+    public function test_first_card_creates_guest_account(): void
+    {
+        $this->postJson('/api/cards', $this->payload())
+            ->assertCreated()
+            ->assertJsonPath('user.guest', true);
+
+        $guest = User::sole();
+        $this->assertAuthenticatedAs($guest);
+        $this->assertNull($guest->email);
+        $this->assertDatabaseHas('cards', ['user_id' => $guest->id]);
+
+        $this->getJson('/api/cards')->assertJsonCount(1, 'cards');
+        $this->postJson('/api/cards', $this->payload(['number' => '123']))->assertCreated();
+        $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_invalid_card_does_not_create_guest_account(): void
+    {
+        $this->postJson('/api/cards', $this->payload(['name' => '']))->assertUnprocessable();
+        $this->assertDatabaseCount('users', 0);
     }
 
     public function test_user_sees_only_own_cards(): void

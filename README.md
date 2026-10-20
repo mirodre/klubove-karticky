@@ -12,7 +12,8 @@ PWA aplikácia na klubové a vernostné kartičky – naskenuješ kartu kamerou 
 
 ## Funkcie
 
-- registrácia / prihlásenie e-mailom a heslom
+- funguje aj bez registrácie – prvá karta založí hosťovský účet v tomto zariadení
+- registrácia / prihlásenie e-mailom a heslom; karty pridané bez účtu sa pri registrácii či prihlásení pripoja k účtu
 - pridanie karty skenovaním kamerou, z fotky alebo ručne (typ kódu sa rozpozná automaticky)
 - detail karty s čiarovým / QR kódom, displej počas zobrazenia nezhasne (Wake Lock)
 - „Naposledy použitá“ karta navrchu, vyhľadávanie

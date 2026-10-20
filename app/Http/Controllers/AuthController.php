@@ -23,10 +23,17 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        $guest = $request->user();
+
         if (! Auth::attempt($credentials, remember: true)) {
             return back()
                 ->withErrors(['email' => 'Nesprávny e-mail alebo heslo.'])
                 ->onlyInput('email');
+        }
+
+        // karty, ktoré si hosť pridal bez účtu, sa presunú do účtu
+        if ($guest?->isGuest()) {
+            $request->user()->absorb($guest);
         }
 
         $request->session()->regenerate();
@@ -51,7 +58,13 @@ class AuthController extends Controller
             'password.min' => 'Heslo musí mať aspoň 8 znakov.',
         ]);
 
-        $user = User::create($data);
+        // hosť si ponechá svoj účet aj s kartami, len ho doplní o prihlasovacie údaje
+        $user = $request->user();
+        if ($user) {
+            $user->update($data);
+        } else {
+            $user = User::create($data);
+        }
 
         Auth::login($user, remember: true);
         $request->session()->regenerate();

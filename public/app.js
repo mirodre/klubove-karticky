@@ -2,10 +2,13 @@
 (() => {
   'use strict';
 
-  const USER = window.APP_USER;
+  // null = návštevník bez účtu; { guest: true } = hosť, ktorý už má karty, ale ešte sa neregistroval
+  let USER = window.APP_USER;
   const CSRF = document.querySelector('meta[name="csrf-token"]').content;
-  const CACHE_KEY = `karty:${USER.id}:cards`;
-  const GEO_KEY = `karty:${USER.id}:geo`; // 'on' | 'off' | null (ešte sme sa nepýtali)
+  const cacheKey = () => `karty:${USER ? USER.id : 'guest'}:cards`;
+  const geoKey = () => `karty:${USER ? USER.id : 'guest'}:geo`; // 'on' | 'off' | null (ešte sme sa nepýtali)
+  const ACCOUNT_HINT_KEY = 'karty:account-hint'; // kedy hosť naposledy odložil ponuku na registráciu
+  const ACCOUNT_HINT_AGAIN = 14 * 24 * 60 * 60 * 1000;
   const NEARBY_RADIUS = 200; // m – do tejto vzdialenosti od zapamätaného miesta ponúkneme kartu
   const app = document.getElementById('app');
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -132,6 +135,7 @@
     flash: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
     type: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2M9 20h6M12 4v16"/></svg>',
     photo: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>',
+    user: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
     logout: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
     trash: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>',
     share: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14"/></svg>',
@@ -145,10 +149,10 @@
   const $ = (sel, root = document) => root.querySelector(sel);
 
   function readCache() {
-    try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || []; } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(cacheKey())) || []; } catch { return []; }
   }
   function writeCache() {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify(state.cards)); } catch { /* plné úložisko – nevadí */ }
+    try { localStorage.setItem(cacheKey(), JSON.stringify(state.cards)); } catch { /* plné úložisko – nevadí */ }
   }
 
   function toast(msg) {
@@ -305,6 +309,17 @@
     }
   }
 
+  /** Prvá karta návštevníka mu na serveri založila hosťovský účet – nastavenia z prehliadača si ponecháme. */
+  function adoptUser(user) {
+    if (!user || USER) return;
+    const geo = geoSetting();
+    try { localStorage.removeItem(cacheKey()); localStorage.removeItem(geoKey()); } catch { /* */ }
+    USER = user;
+    if (geo) setGeoSetting(geo);
+  }
+
+  const isGuest = () => !USER || USER.guest;
+
   function upsert(card) {
     const i = state.cards.findIndex((c) => c.id === card.id);
     if (i >= 0) state.cards[i] = card; else state.cards.push(card);
@@ -313,10 +328,10 @@
 
   /* ---------------- poloha ---------------- */
   function geoSetting() {
-    try { return localStorage.getItem(GEO_KEY); } catch { return null; }
+    try { return localStorage.getItem(geoKey()); } catch { return null; }
   }
   function setGeoSetting(value) {
-    try { localStorage.setItem(GEO_KEY, value); } catch { /* */ }
+    try { localStorage.setItem(geoKey(), value); } catch { /* */ }
   }
   const geoEnabled = () => 'geolocation' in navigator && geoSetting() === 'on';
 
@@ -513,6 +528,12 @@
             <div class="geo-actions"><button class="btn btn-dark" id="geo-on">Zapnúť</button><button class="btn btn-ghost" id="geo-no">Teraz nie</button></div>
           </div></section>`;
         }
+        if (showAccountHint() && !(!near && showGeoHint())) {
+          html += `<section class="list-section"><div class="geo-hint">
+            <div class="geo-text">${I.user}<span>Karty máte zatiaľ len v tomto zariadení. Vytvorte si účet a nestratia sa ani pri výmene mobilu.</span></div>
+            <div class="geo-actions"><a href="/register" class="btn btn-dark">Vytvoriť účet</a><button class="btn btn-ghost" id="account-no">Teraz nie</button></div>
+          </div></section>`;
+        }
         const rest = all.filter((c) => c !== hero);
         if (rest.length) {
           html += `<section class="list-section" aria-label="Všetky karty"><h2 class="section-title">${hero ? 'Ďalšie karty' : 'Všetky'}</h2>
@@ -524,6 +545,10 @@
       body.innerHTML = html;
       $('#geo-on')?.addEventListener('click', () => enableGeo());
       $('#geo-no')?.addEventListener('click', () => { setGeoSetting('off'); draw(); });
+      $('#account-no')?.addEventListener('click', () => {
+        try { localStorage.setItem(ACCOUNT_HINT_KEY, String(Date.now())); } catch { /* */ }
+        draw();
+      });
     };
     draw();
 
@@ -554,6 +579,12 @@
     return 'geolocation' in navigator && geoSetting() === null && state.cards.length >= 2;
   }
 
+  /** Hosťovi s kartami občas pripomenieme, že si ich môže uložiť do účtu. */
+  function showAccountHint() {
+    if (!isGuest() || !state.cards.length) return false;
+    try { return Date.now() - Number(localStorage.getItem(ACCOUNT_HINT_KEY) || 0) > ACCOUNT_HINT_AGAIN; } catch { return true; }
+  }
+
   function renderLoading() {
     app.innerHTML = `<div class="screen empty">${BRAND}<h1 class="h1">Moje karty</h1>
       <div class="empty-body"><p style="color:var(--muted);font-weight:600">Načítavam karty…</p></div></div>`;
@@ -579,6 +610,7 @@
       <div class="actions">
         <a href="#/add" class="btn btn-dark">${I.barcode}Naskenovať prvú kartu</a>
         <button class="btn btn-ghost" id="paste-empty">${I.paste}Vložiť screenshot karty</button>
+        ${USER ? '' : '<a href="/login" class="btn btn-ghost">Už mám účet – prihlásiť sa</a>'}
       </div>
     </div>`;
     $('#paste-empty').addEventListener('click', pasteFromClipboard);
@@ -613,7 +645,7 @@
         <div class="code-hint">${I.sun}<span>Pre ľahšie skenovanie zvýšte jas obrazovky</span></div>
       </div>
       <div class="info-grid">
-        <div class="info"><span class="k" style="color:${t.sub};opacity:1">Majiteľ karty</span><span class="v">${esc(card.holder || USER.name)}</span></div>
+        <div class="info"><span class="k" style="color:${t.sub};opacity:1">Majiteľ karty</span><span class="v">${esc(card.holder || USER?.name || '—')}</span></div>
         <div class="info"><span class="k" style="color:${t.sub};opacity:1">Naposledy použitá</span><span class="v" id="last-used">${esc(relativeUse(card.last_used_at))}</span></div>
         ${card.note ? `<div class="info wide note"><span class="k" style="color:${t.sub};opacity:1">Poznámka</span><span class="v">${esc(card.note)}</span></div>` : ''}
       </div>
@@ -1005,6 +1037,7 @@
         const data = editing
           ? await api('PUT', `/api/cards/${card.id}`, payload)
           : await api('POST', '/api/cards', payload);
+        adoptUser(data.user);
         upsert(data.card);
         toast(editing ? 'Zmeny sú uložené.' : 'Karta je pridaná.');
         go(`/card/${data.card.id}`, true);
@@ -1143,13 +1176,19 @@
 
   function openSettings() {
     const install = isStandalone() ? '' : `<button class="btn btn-light" data-act="install">${I.install}Nainštalovať aplikáciu</button>`;
+    const account = isGuest()
+      ? `<h2>Bez účtu</h2>
+      <p class="small">${plural(state.cards.length)} · uložené len v tomto zariadení. S účtom ich budete mať na každom zariadení a nestratia sa.</p>
+      <a href="/register" class="btn btn-dark">${I.user}Vytvoriť účet</a>
+      <a href="/login" class="btn btn-ghost">Už mám účet – prihlásiť sa</a>`
+      : `<h2>${esc(USER.name)}</h2>
+      <p class="small">${esc(USER.email)} · ${plural(state.cards.length)}</p>`;
     openSheet(`
       <div class="grabber"></div>
-      <h2>${esc(USER.name)}</h2>
-      <p class="small">${esc(USER.email)} · ${plural(state.cards.length)}</p>
+      ${account}
       ${install}
       <button class="btn btn-light" data-act="shareApp">${I.share}Zdieľať aplikáciu</button>
-      <button class="btn btn-light" data-act="logout">${I.logout}Odhlásiť sa</button>
+      ${isGuest() ? '' : `<button class="btn btn-light" data-act="logout">${I.logout}Odhlásiť sa</button>`}
     `, {
       install: () => setTimeout(openInstall),
       shareApp: () => setTimeout(openShareApp),
@@ -1186,7 +1225,7 @@
   }
 
   async function logout() {
-    try { localStorage.removeItem(CACHE_KEY); } catch { /* */ }
+    try { localStorage.removeItem(cacheKey()); } catch { /* */ }
     try { await caches.delete('karty-pages'); } catch { /* */ }
     const f = document.createElement('form');
     f.method = 'POST';

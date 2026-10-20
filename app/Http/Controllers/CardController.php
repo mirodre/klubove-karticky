@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Card;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class CardController extends Controller
@@ -13,15 +15,25 @@ class CardController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json([
-            'cards' => $request->user()->cards()->with('places')->orderBy('name')->get(),
+            'cards' => $request->user()?->cards()->with('places')->orderBy('name')->get() ?? [],
         ]);
     }
 
+    /** Prvá karta návštevníka bez účtu mu založí hosťovský účet, aby sa dala neskôr previazať s registráciou. */
     public function store(Request $request): JsonResponse
     {
-        $card = $request->user()->cards()->create($request->validate($this->rules()));
+        $data = $request->validate($this->rules());
 
-        return response()->json(['card' => $card->load('places')], 201);
+        $user = $request->user();
+        if (! $user) {
+            $user = User::create();
+            Auth::login($user, remember: true);
+            $request->session()->regenerate();
+        }
+
+        $card = $user->cards()->create($data);
+
+        return response()->json(['card' => $card->load('places'), 'user' => $user->toAppUser()], 201);
     }
 
     public function update(Request $request, Card $card): JsonResponse

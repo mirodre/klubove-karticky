@@ -10,10 +10,61 @@ class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_is_redirected_to_login(): void
+    public function test_app_opens_without_account(): void
     {
-        $this->get('/')->assertRedirect('/login');
+        $this->get('/')->assertOk()->assertSee('window.APP_USER = null', false);
         $this->get('/login')->assertOk()->assertSee('Prihlásiť sa');
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_guest_keeps_cards_after_registration(): void
+    {
+        $this->postJson('/api/cards', $this->card())->assertCreated()->assertJsonPath('user.guest', true);
+        $guest = User::sole();
+
+        $this->get('/register')->assertOk()->assertSee('karty z tohto zariadenia');
+        $this->post('/register', [
+            'name' => 'Jana',
+            'email' => 'jana@example.com',
+            'password' => 'tajneheslo',
+            'password_confirmation' => 'tajneheslo',
+        ])->assertRedirect('/');
+
+        $this->assertAuthenticatedAs($guest);
+        $this->assertDatabaseCount('users', 1);
+        $this->assertSame('jana@example.com', $guest->fresh()->email);
+        $this->getJson('/api/cards')->assertJsonCount(1, 'cards');
+    }
+
+    public function test_guest_cards_move_to_account_on_login(): void
+    {
+        $user = User::factory()->create(['password' => 'tajneheslo']);
+        $user->cards()->create($this->card(['name' => 'Už mám', 'number' => '111']));
+
+        $this->postJson('/api/cards', $this->card(['number' => '111']))->assertCreated(); // duplikát
+        $this->postJson('/api/cards', $this->card(['name' => 'Nová', 'number' => '222']))->assertCreated();
+        $guest = User::whereNull('email')->sole();
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'tajneheslo'])->assertRedirect('/');
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertModelMissing($guest);
+        $this->assertEqualsCanonicalizing(['111', '222'], $user->cards()->pluck('number')->all());
+    }
+
+    public function test_registered_user_cannot_open_register_page(): void
+    {
+        $this->actingAs(User::factory()->create())->get('/register')->assertRedirect('/');
+    }
+
+    private function card(array $overrides = []): array
+    {
+        return array_merge([
+            'name' => 'Zelený Košík',
+            'number' => '8590123456781',
+            'format' => 'EAN13',
+            'color' => '#1F4D3A',
+        ], $overrides);
     }
 
     public function test_user_can_register(): void
