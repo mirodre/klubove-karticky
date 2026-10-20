@@ -979,6 +979,7 @@
       <p class="small">${esc(USER.email)} · ${plural(state.cards.length)}</p>
       ${install}
       ${'geolocation' in navigator ? `<button class="btn btn-light" data-act="geo">${I.pin}${geoEnabled() ? 'Vypnúť návrh karty podľa polohy' : 'Ponúkať kartu podľa polohy'}</button>` : ''}
+      <button class="btn btn-light" data-act="shareApp">${I.share}Zdieľať aplikáciu</button>
       <button class="btn btn-light" data-act="export">${I.download}Exportovať zálohu</button>
       <button class="btn btn-light" data-act="import">${I.upload}Obnoviť zo zálohy</button>
       <button class="btn btn-light" data-act="logout">${I.logout}Odhlásiť sa</button>
@@ -996,10 +997,59 @@
         }
         if (!location.hash.match(/^#\/(card|new|edit|add)/)) route();
       },
+      shareApp: () => setTimeout(openShareApp),
       export: exportBackup,
       import: importBackup,
       logout,
     });
+  }
+
+  /* ---------------- zdieľanie aplikácie ---------------- */
+  const APP_URL = `${location.origin}/`;
+  const SHARE_TEXT = 'Kardo – všetky vernostné a klubové kartičky v mobile. Vyskúšaj:';
+
+  function shareTargets() {
+    const u = encodeURIComponent(APP_URL);
+    const t = encodeURIComponent(SHARE_TEXT);
+    const both = encodeURIComponent(`${SHARE_TEXT} ${APP_URL}`);
+    return [
+      { name: 'WhatsApp', color: '#25D366', href: `https://wa.me/?text=${both}` },
+      { name: 'Messenger', color: '#0084FF', href: `fb-messenger://share/?link=${u}`, mobile: true },
+      { name: 'Facebook', color: '#1877F2', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
+      { name: 'Telegram', color: '#229ED9', href: `https://t.me/share/url?url=${u}&text=${t}` },
+      { name: 'Viber', color: '#7360F2', href: `viber://forward?text=${both}`, mobile: true },
+      { name: 'X', color: '#17171A', href: `https://x.com/intent/post?text=${t}&url=${u}` },
+      { name: 'LinkedIn', color: '#0A66C2', href: `https://www.linkedin.com/sharing/share-offsite/?url=${u}` },
+      { name: 'SMS', color: '#34C759', href: `sms:?&body=${both}`, mobile: true },
+      { name: 'E-mail', color: '#6B6A66', href: `mailto:?subject=${encodeURIComponent('Kardo – kartičky v mobile')}&body=${both}` },
+    ].filter((x) => !x.mobile || isIOS() || isAndroid());
+  }
+
+  function openShareApp() {
+    const native = !!navigator.share;
+    openSheet(`
+      <div class="grabber"></div>
+      <h2>Zdieľať aplikáciu</h2>
+      <p class="small">Nech si kamarát naskenuje QR kód fotoaparátom, alebo mu pošlite odkaz.</p>
+      <div class="share-qr"></div>
+      <div class="share-url">${esc(APP_URL.replace(/\/$/, ''))}</div>
+      ${native ? `<button class="btn btn-dark" data-act="native">${I.share}Poslať…</button>` : ''}
+      <button class="btn btn-light" data-act="copy">${I.paste}Kopírovať odkaz</button>
+      <div class="share-grid">
+        ${shareTargets().map((x) => `<a class="share-chip" href="${esc(x.href)}" target="_blank" rel="noopener noreferrer"><span class="dot" style="background:${x.color}">${esc(x.name[0])}</span>${esc(x.name)}</a>`).join('')}
+      </div>
+      <button class="btn btn-ghost" data-act="close">Zavrieť</button>
+    `, {
+      native: async () => {
+        try { await navigator.share({ title: 'Kardo', text: SHARE_TEXT, url: APP_URL }); } catch { /* zrušené */ }
+      },
+      copy: async () => {
+        try { await navigator.clipboard.writeText(APP_URL); toast('Odkaz je skopírovaný.'); }
+        catch { toast(APP_URL); }
+      },
+      close: () => {},
+    });
+    try { $('.share-qr', sheetEl).append(qrSvg(APP_URL)); } catch { /* knižnica sa nenačítala */ }
   }
 
   function exportBackup() {
