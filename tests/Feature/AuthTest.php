@@ -44,4 +44,18 @@ class AuthTest extends TestCase
         $this->post('/logout')->assertRedirect('/login');
         $this->assertGuest();
     }
+
+    public function test_login_keeps_user_signed_in_for_at_least_a_year(): void
+    {
+        $user = User::factory()->create(['password' => 'tajneheslo']);
+
+        $response = $this->post('/login', ['email' => $user->email, 'password' => 'tajneheslo']);
+
+        $year = 365 * 24 * 60 * 60;
+        $remember = collect($response->headers->getCookies())
+            ->first(fn ($c) => str_starts_with($c->getName(), 'remember_web_'));
+        $this->assertNotNull($remember);
+        $this->assertGreaterThanOrEqual(time() + $year, $remember->getExpiresTime());
+        $this->assertGreaterThanOrEqual(525600, config('session.lifetime'));
+    }
 }

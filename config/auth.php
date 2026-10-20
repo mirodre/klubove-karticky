@@ -41,6 +41,8 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // "zapamätať si ma" cookie – 400 dní (maximum, ktoré prehliadače dovolia)
+            'remember' => 576000,
         ],
     ],
 
