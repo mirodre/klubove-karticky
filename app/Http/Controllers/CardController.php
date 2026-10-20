@@ -6,7 +6,6 @@ use App\Models\Card;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CardController extends Controller
@@ -66,43 +65,6 @@ class CardController extends Controller
         }
 
         return response()->json(['card' => $card->load('places')]);
-    }
-
-    /** Obnova zo zálohy (JSON exportovaný z aplikácie). Duplicitné karty preskočí. */
-    public function import(Request $request): JsonResponse
-    {
-        $request->validate(['cards' => ['required', 'array', 'max:500']]);
-
-        $rules = collect($this->rules())
-            ->mapWithKeys(fn ($rule, $key) => ["cards.*.$key" => $rule])
-            ->all();
-        $data = $request->validate($rules + [
-            'cards.*.uses' => ['nullable', 'integer', 'min:0'],
-            'cards.*.last_used_at' => ['nullable', 'date'],
-        ]);
-
-        $user = $request->user();
-        $existing = $user->cards()->get(['name', 'number'])
-            ->map(fn (Card $c) => mb_strtolower($c->name).'|'.$c->number)
-            ->flip();
-
-        $created = 0;
-        DB::transaction(function () use ($data, $user, $existing, &$created) {
-            foreach ($data['cards'] as $item) {
-                $key = mb_strtolower($item['name']).'|'.$item['number'];
-                if ($existing->has($key)) {
-                    continue;
-                }
-                $user->cards()->create($item);
-                $existing->put($key, true);
-                $created++;
-            }
-        });
-
-        return response()->json([
-            'imported' => $created,
-            'cards' => $user->cards()->with('places')->orderBy('name')->get(),
-        ]);
     }
 
     /**

@@ -18,7 +18,6 @@ Route::middleware('auth')->group(function () {
     Route::prefix('api')->group(function () {
         Route::get('/cards', [CardController::class, 'index']);
         Route::post('/cards', [CardController::class, 'store']);
-        Route::post('/cards/import', [CardController::class, 'import']);
         Route::put('/cards/{card}', [CardController::class, 'update']);
         Route::delete('/cards/{card}', [CardController::class, 'destroy']);
         Route::post('/cards/{card}/use', [CardController::class, 'use']);

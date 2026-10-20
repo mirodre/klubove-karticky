@@ -144,18 +144,4 @@ class CardApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['lat', 'lng']);
     }
-
-    public function test_import_skips_duplicates(): void
-    {
-        $user = User::factory()->create();
-        Card::factory()->for($user)->create(['name' => 'Zelený Košík', 'number' => '8590123456781']);
-
-        $this->actingAs($user)->postJson('/api/cards/import', ['cards' => [
-            $this->payload(),
-            $this->payload(['name' => 'Fit Zóna', 'number' => 'FZ-001', 'format' => 'CODE128']),
-        ]])
-            ->assertOk()
-            ->assertJsonPath('imported', 1)
-            ->assertJsonCount(2, 'cards');
-    }
 }

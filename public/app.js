@@ -132,8 +132,6 @@
     flash: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
     type: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2M9 20h6M12 4v16"/></svg>',
     photo: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>',
-    download: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
-    upload: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M5 3h14"/></svg>',
     logout: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
     trash: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>',
     share: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14"/></svg>',
@@ -581,10 +579,8 @@
       <div class="actions">
         <a href="#/add" class="btn btn-dark">${I.barcode}Naskenovať prvú kartu</a>
         <button class="btn btn-ghost" id="paste-empty">${I.paste}Vložiť screenshot karty</button>
-        <button class="btn btn-ghost" id="restore">Obnoviť zo zálohy</button>
       </div>
     </div>`;
-    $('#restore').addEventListener('click', importBackup);
     $('#paste-empty').addEventListener('click', pasteFromClipboard);
     $('#settings').addEventListener('click', openSettings);
   }
@@ -1032,7 +1028,7 @@
     first?.focus();
   }
 
-  /* ---------------- nastavenia, záloha ---------------- */
+  /* ---------------- nastavenia ---------------- */
   let sheetEl = null;
   function openSheet(html, actions = {}) {
     closeSheet();
@@ -1045,7 +1041,39 @@
       if (btn && actions[btn.dataset.act]) { closeSheet(); actions[btn.dataset.act](); }
     });
     document.body.append(sheetEl);
+    swipeToClose($('.sheet', sheetEl));
     sheetEl.querySelector('button')?.focus();
+  }
+
+  /** Potiahnutím nadol sa okno zatvorí (ak je odscrollované navrch). */
+  function swipeToClose(sheet) {
+    let startY = null, startT = 0, dy = 0;
+    sheet.addEventListener('touchstart', (e) => {
+      if (sheet.scrollTop > 0 || e.touches.length > 1) return;
+      startY = e.touches[0].clientY; startT = Date.now(); dy = 0;
+      sheet.style.transition = 'none';
+    }, { passive: true });
+    sheet.addEventListener('touchmove', (e) => {
+      if (startY === null) return;
+      dy = Math.max(0, e.touches[0].clientY - startY);
+      if (dy > 0 && e.cancelable) e.preventDefault();
+      sheet.style.transform = `translateY(${dy}px)`;
+    }, { passive: false });
+    const end = () => {
+      if (startY === null) return;
+      startY = null;
+      sheet.style.transition = 'transform .2s ease';
+      const fast = dy > 40 && dy / Math.max(1, Date.now() - startT) > 0.5;
+      if (dy > sheet.offsetHeight / 3 || fast) {
+        sheet.style.transform = 'translateY(100%)';
+        const el = sheetEl;
+        setTimeout(() => { if (sheetEl === el) closeSheet(); }, 200);
+      } else {
+        sheet.style.transform = '';
+      }
+    };
+    sheet.addEventListener('touchend', end);
+    sheet.addEventListener('touchcancel', end);
   }
   function closeSheet() { sheetEl?.remove(); sheetEl = null; }
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
@@ -1120,28 +1148,11 @@
       <h2>${esc(USER.name)}</h2>
       <p class="small">${esc(USER.email)} · ${plural(state.cards.length)}</p>
       ${install}
-      ${'geolocation' in navigator ? `<button class="btn btn-light" data-act="geo">${I.pin}${geoEnabled() ? 'Vypnúť návrh karty podľa polohy' : 'Ponúkať kartu podľa polohy'}</button>` : ''}
       <button class="btn btn-light" data-act="shareApp">${I.share}Zdieľať aplikáciu</button>
-      <button class="btn btn-light" data-act="export">${I.download}Exportovať zálohu</button>
-      <button class="btn btn-light" data-act="import">${I.upload}Obnoviť zo zálohy</button>
       <button class="btn btn-light" data-act="logout">${I.logout}Odhlásiť sa</button>
     `, {
       install: () => setTimeout(openInstall),
-      geo: async () => {
-        if (geoEnabled()) {
-          setGeoSetting('off');
-          state.position = null;
-          toast('Návrh karty podľa polohy je vypnutý.');
-        } else {
-          setGeoSetting('on');
-          const pos = await getPosition(0);
-          toast(pos ? 'Karty vám budem ponúkať podľa polohy.' : 'Prístup k polohe je zakázaný – povoľte ho v nastaveniach prehliadača.');
-        }
-        if (!location.hash.match(/^#\/(card|new|edit|add)/)) route();
-      },
       shareApp: () => setTimeout(openShareApp),
-      export: exportBackup,
-      import: importBackup,
       logout,
     });
   }
@@ -1172,48 +1183,6 @@
       },
     });
     try { $('.share-qr', sheetEl).append(qrSvg(APP_URL)); } catch { /* knižnica sa nenačítala */ }
-  }
-
-  function exportBackup() {
-    const data = {
-      app: 'klubove-karticky',
-      version: 1,
-      exported_at: new Date().toISOString(),
-      cards: state.cards.map(({ name, kind, number, format, color, holder, note, uses, last_used_at }) => ({ name, kind, number, format, color, holder, note, uses, last_used_at })),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `karticky-zaloha-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
-
-  function importBackup() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json,.json';
-    input.addEventListener('change', async () => {
-      const file = input.files[0];
-      if (!file) return;
-      let cards;
-      try {
-        const json = JSON.parse(await file.text());
-        cards = Array.isArray(json) ? json : json.cards;
-        if (!Array.isArray(cards)) throw new Error();
-      } catch { return toast('Súbor nie je platná záloha kartičiek.'); }
-      try {
-        const data = await api('POST', '/api/cards/import', { cards });
-        state.cards = data.cards;
-        state.synced = true;
-        writeCache();
-        toast(data.imported ? `Obnovené karty: ${data.imported}` : 'Všetky karty zo zálohy už máte.');
-        go('/', true);
-      } catch (e) { toast(e.message); }
-    });
-    input.click();
   }
 
   async function logout() {
