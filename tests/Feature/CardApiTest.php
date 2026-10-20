@@ -100,6 +100,51 @@ class CardApiTest extends TestCase
         $this->assertNotNull($card->fresh()->last_used_at);
     }
 
+    public function test_use_remembers_place_and_merges_nearby_opens(): void
+    {
+        $user = User::factory()->create();
+        $card = Card::factory()->for($user)->create();
+
+        // 1. otvorenie v obchode
+        $this->actingAs($user)->postJson("/api/cards/{$card->id}/use", ['lat' => 48.148600, 'lng' => 17.107700])
+            ->assertOk()
+            ->assertJsonCount(1, 'card.places')
+            ->assertJsonPath('card.places.0.uses', 1);
+
+        // 2. o ~50 m ďalej – to isté miesto
+        $this->actingAs($user)->postJson("/api/cards/{$card->id}/use", ['lat' => 48.149000, 'lng' => 17.107900])
+            ->assertJsonCount(1, 'card.places')
+            ->assertJsonPath('card.places.0.uses', 2);
+
+        // 3. iné mesto – nové miesto
+        $this->actingAs($user)->postJson("/api/cards/{$card->id}/use", ['lat' => 49.223000, 'lng' => 18.739000])
+            ->assertJsonCount(2, 'card.places');
+
+        $this->actingAs($user)->getJson('/api/cards')
+            ->assertJsonCount(2, 'cards.0.places')
+            ->assertJsonMissingPath('cards.0.places.0.card_id');
+    }
+
+    public function test_use_without_position_stores_no_place(): void
+    {
+        $user = User::factory()->create();
+        $card = Card::factory()->for($user)->create();
+
+        $this->actingAs($user)->postJson("/api/cards/{$card->id}/use")
+            ->assertOk()
+            ->assertJsonCount(0, 'card.places');
+    }
+
+    public function test_use_validates_position(): void
+    {
+        $user = User::factory()->create();
+        $card = Card::factory()->for($user)->create();
+
+        $this->actingAs($user)->postJson("/api/cards/{$card->id}/use", ['lat' => 120])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['lat', 'lng']);
+    }
+
     public function test_import_skips_duplicates(): void
     {
         $user = User::factory()->create();

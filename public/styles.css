@@ -282,3 +282,15 @@ form.fields { padding: 12px 20px 0; display: flex; flex-direction: column; gap: 
 .steps .ico svg { width: 20px; height: 20px; }
 .sheet .btn-ghost { justify-content: center; }
 .sheet .btn-dark { justify-content: center; }
+
+/* ---------- návrh karty podľa polohy ---------- */
+.section-near { display: flex; align-items: center; gap: 6px; }
+.section-near svg { width: 15px; height: 15px; }
+.geo-hint {
+  background: var(--surface); border-radius: 20px; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.geo-text { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; font-weight: 600; line-height: 1.4; }
+.geo-text svg { flex: none; margin-top: 1px; }
+.geo-actions { display: flex; gap: 8px; }
+.geo-actions .btn { height: 44px; border-radius: 14px; font-size: 15px; }

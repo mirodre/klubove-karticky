@@ -14,7 +14,7 @@ class CardController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json([
-            'cards' => $request->user()->cards()->orderBy('name')->get(),
+            'cards' => $request->user()->cards()->with('places')->orderBy('name')->get(),
         ]);
     }
 
@@ -22,7 +22,7 @@ class CardController extends Controller
     {
         $card = $request->user()->cards()->create($request->validate($this->rules()));
 
-        return response()->json(['card' => $card], 201);
+        return response()->json(['card' => $card->load('places')], 201);
     }
 
     public function update(Request $request, Card $card): JsonResponse
@@ -31,7 +31,7 @@ class CardController extends Controller
 
         $card->update($request->validate($this->rules()));
 
-        return response()->json(['card' => $card]);
+        return response()->json(['card' => $card->load('places')]);
     }
 
     public function destroy(Request $request, Card $card): Response
@@ -43,17 +43,29 @@ class CardController extends Controller
         return response()->noContent();
     }
 
-    /** Zaznamená zobrazenie karty pri pokladni – podklad pre „Často používané“. */
+    /**
+     * Zaznamená zobrazenie karty pri pokladni – podklad pre „Často používané“.
+     * Ak príde aj poloha, zapamätá si miesto, aby appka vedela kartu ponúknuť nabudúce na tom istom mieste.
+     */
     public function use(Request $request, Card $card): JsonResponse
     {
         $this->authorizeOwner($request, $card);
+
+        $position = $request->validate([
+            'lat' => ['nullable', 'required_with:lng', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'required_with:lat', 'numeric', 'between:-180,180'],
+        ]);
 
         $card->forceFill([
             'uses' => $card->uses + 1,
             'last_used_at' => now(),
         ])->save();
 
-        return response()->json(['card' => $card]);
+        if (isset($position['lat'], $position['lng'])) {
+            $card->rememberPlace((float) $position['lat'], (float) $position['lng']);
+        }
+
+        return response()->json(['card' => $card->load('places')]);
     }
 
     /** Obnova zo zálohy (JSON exportovaný z aplikácie). Duplicitné karty preskočí. */
@@ -89,7 +101,7 @@ class CardController extends Controller
 
         return response()->json([
             'imported' => $created,
-            'cards' => $user->cards()->orderBy('name')->get(),
+            'cards' => $user->cards()->with('places')->orderBy('name')->get(),
         ]);
     }
 

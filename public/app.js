@@ -5,6 +5,8 @@
   const USER = window.APP_USER;
   const CSRF = document.querySelector('meta[name="csrf-token"]').content;
   const CACHE_KEY = `karty:${USER.id}:cards`;
+  const GEO_KEY = `karty:${USER.id}:geo`; // 'on' | 'off' | null (ešte sme sa nepýtali)
+  const NEARBY_RADIUS = 200; // m – do tejto vzdialenosti od zapamätaného miesta ponúkneme kartu
   const app = document.getElementById('app');
   const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -18,6 +20,7 @@
     draft: null,        // predvyplnené údaje zo skenovania
     cleanup: null,      // upratovanie aktuálnej obrazovky (kamera, wake lock)
     installPrompt: null,
+    position: null,     // posledná zistená poloha {lat, lng, accuracy, at}
   };
 
   /* ---------------- ikony ---------------- */
@@ -43,6 +46,7 @@
     trash: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>',
     share: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14"/></svg>',
     paste: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>',
+    pin: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
     install: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 7v7M9 11l3 3 3-3"/></svg>',
   };
 
@@ -176,6 +180,57 @@
     const i = state.cards.findIndex((c) => c.id === card.id);
     if (i >= 0) state.cards[i] = card; else state.cards.push(card);
     writeCache();
+  }
+
+  /* ---------------- poloha ---------------- */
+  function geoSetting() {
+    try { return localStorage.getItem(GEO_KEY); } catch { return null; }
+  }
+  function setGeoSetting(value) {
+    try { localStorage.setItem(GEO_KEY, value); } catch { /* */ }
+  }
+  const geoEnabled = () => 'geolocation' in navigator && geoSetting() === 'on';
+
+  /** Aktuálna poloha alebo null (vypnuté, zamietnuté, nedostupné). Čerstvú polohu nezisťuje znova. */
+  function getPosition(maxAge = 60_000) {
+    if (!geoEnabled()) return Promise.resolve(null);
+    if (state.position && Date.now() - state.position.at < maxAge) return Promise.resolve(state.position);
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          state.position = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: Date.now() };
+          resolve(state.position);
+        },
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) setGeoSetting('off');
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 10_000, maximumAge: maxAge },
+      );
+    });
+  }
+
+  /** Vzdialenosť dvoch bodov v metroch (haversine). */
+  function distance(a, b) {
+    const rad = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  }
+
+  /** Karta, ktorá bola na tomto mieste otvorená naposledy (alebo null). */
+  function nearbyCard(pos) {
+    if (!pos) return null;
+    const radius = NEARBY_RADIUS + Math.min(pos.accuracy || 0, 100);
+    let best = null;
+    for (const card of state.cards) {
+      for (const place of card.places || []) {
+        if (distance(pos, place) > radius) continue;
+        const at = new Date(place.last_used_at).getTime();
+        if (!best || at > best.at) best = { card, at };
+      }
+    }
+    return best?.card || null;
   }
 
   /* ---------------- čiarové kódy ---------------- */
@@ -312,11 +367,20 @@
         html = `<section class="list-section" aria-label="Výsledky"><h2 class="section-title">Výsledky</h2>
           <div class="grid">${hits.map(tile).join('') || '<p class="no-results">Žiadna karta nezodpovedá hľadaniu.</p>'}</div></section>`;
       } else {
+        const near = nearbyCard(state.position);
         const used = state.cards.filter((c) => c.last_used_at)
           .sort((a, b) => new Date(b.last_used_at) - new Date(a.last_used_at));
-        const hero = used[0];
-        if (hero) {
+        const hero = near || used[0];
+        if (near) {
+          html += `<section class="list-section" aria-label="Tu nablízku"><h2 class="section-title section-near">${I.pin}Tu nablízku</h2>${heroCard(near)}</section>`;
+        } else if (hero) {
           html += `<section class="list-section" aria-label="Naposledy použitá"><h2 class="section-title">Naposledy použitá</h2>${heroCard(hero)}</section>`;
+        }
+        if (!near && showGeoHint()) {
+          html += `<section class="list-section"><div class="geo-hint">
+            <div class="geo-text">${I.pin}<span>Ponúknem vám správnu kartu podľa toho, kde práve ste.</span></div>
+            <div class="geo-actions"><button class="btn btn-dark" id="geo-on">Zapnúť</button><button class="btn btn-ghost" id="geo-no">Teraz nie</button></div>
+          </div></section>`;
         }
         const rest = all.filter((c) => c !== hero);
         if (rest.length) {
@@ -327,11 +391,36 @@
         }
       }
       body.innerHTML = html;
+      $('#geo-on')?.addEventListener('click', () => enableGeo());
+      $('#geo-no')?.addEventListener('click', () => { setGeoSetting('off'); draw(); });
     };
     draw();
 
+    // podľa polohy ponúkneme kartu otvorenú naposledy na tomto mieste
+    const enableGeo = async () => {
+      setGeoSetting('on');
+      const pos = await getPosition(0);
+      if (!pos) {
+        toast(geoSetting() === 'off' ? 'Prístup k polohe je zakázaný – povoľte ho v nastaveniach prehliadača.' : 'Polohu sa nepodarilo zistiť.');
+      } else if (!nearbyCard(pos)) {
+        toast('Hotovo. Keď kartu otvoríte v obchode, nabudúce vám ju tam ponúknem.');
+      }
+      if (body.isConnected) draw();
+    };
+    if (geoEnabled()) {
+      const before = nearbyCard(state.position);
+      getPosition().then((pos) => {
+        if (pos && body.isConnected && nearbyCard(pos) !== before) draw();
+      });
+    }
+
     $('#q').addEventListener('input', (e) => { state.query = e.target.value; draw(); });
     $('#settings').addEventListener('click', openSettings);
+  }
+
+  /** Ponuku na zapnutie polohy ukážeme, kým sa používateľ nerozhodne. */
+  function showGeoHint() {
+    return 'geolocation' in navigator && geoSetting() === null && state.cards.length >= 2;
   }
 
   function renderLoading() {
@@ -448,8 +537,11 @@
   async function recordUse(card) {
     const last = card.last_used_at ? new Date(card.last_used_at) : null;
     if (last && Date.now() - last < 60_000) return; // opakované otvorenie v rámci minúty nerátame
+    const pos = await getPosition(30_000);
+    // poloha s horšou presnosťou než ~300 m by miesto skôr pokazila
+    const body = pos && pos.accuracy <= 300 ? { lat: +pos.lat.toFixed(6), lng: +pos.lng.toFixed(6) } : undefined;
     try {
-      const data = await api('POST', `/api/cards/${card.id}/use`);
+      const data = await api('POST', `/api/cards/${card.id}/use`, body);
       upsert(data.card);
     } catch {
       upsert({ ...card, last_used_at: new Date().toISOString() });
@@ -886,11 +978,24 @@
       <h2>${esc(USER.name)}</h2>
       <p class="small">${esc(USER.email)} · ${plural(state.cards.length)}</p>
       ${install}
+      ${'geolocation' in navigator ? `<button class="btn btn-light" data-act="geo">${I.pin}${geoEnabled() ? 'Vypnúť návrh karty podľa polohy' : 'Ponúkať kartu podľa polohy'}</button>` : ''}
       <button class="btn btn-light" data-act="export">${I.download}Exportovať zálohu</button>
       <button class="btn btn-light" data-act="import">${I.upload}Obnoviť zo zálohy</button>
       <button class="btn btn-light" data-act="logout">${I.logout}Odhlásiť sa</button>
     `, {
       install: () => setTimeout(openInstall),
+      geo: async () => {
+        if (geoEnabled()) {
+          setGeoSetting('off');
+          state.position = null;
+          toast('Návrh karty podľa polohy je vypnutý.');
+        } else {
+          setGeoSetting('on');
+          const pos = await getPosition(0);
+          toast(pos ? 'Karty vám budem ponúkať podľa polohy.' : 'Prístup k polohe je zakázaný – povoľte ho v nastaveniach prehliadača.');
+        }
+        if (!location.hash.match(/^#\/(card|new|edit|add)/)) route();
+      },
       export: exportBackup,
       import: importBackup,
       logout,
