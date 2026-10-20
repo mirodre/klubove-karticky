@@ -9,10 +9,6 @@
   const SVG_NS = 'http://www.w3.org/2000/svg';
 
   const PALETTE = ['#1F4D3A', '#2F5DA8', '#E4572E', '#E9C46A', '#D9CFF2', '#17171A', '#FFFFFF', '#8E3B5B', '#0F7C8A', '#F4A259'];
-  const FORMATS = [
-    ['EAN13', 'EAN-13'], ['EAN8', 'EAN-8'], ['UPC', 'UPC-A'], ['CODE128', 'Code 128'],
-    ['CODE39', 'Code 39'], ['ITF', 'ITF'], ['QR', 'QR kód'],
-  ];
 
   const state = {
     cards: readCache(),
@@ -698,11 +694,11 @@
     setThemeColor('#F3F2EE');
     const editing = !!card;
     const draft = editing ? card : {
-      name: '', kind: '', number: state.draft?.number || '', format: state.draft?.format || 'CODE128',
-      color: PALETTE[state.cards.length % PALETTE.length], holder: '', note: '',
+      name: '', number: state.draft?.number || '', format: state.draft?.format || 'CODE128',
+      color: PALETTE[state.cards.length % PALETTE.length],
     };
+    // typ kódu sa nevyberá – berie sa zo skenu, inak sa odhadne z čísla
     if (!editing && state.draft?.number && !state.draft.format) draft.format = guessFormat(draft.number);
-    let formatTouched = editing || !!state.draft?.format;
     state.draft = null;
     const v = { ...draft };
 
@@ -716,23 +712,14 @@
         <label class="field"><span>Názov obchodu</span>
           <input name="name" maxlength="80" required autocomplete="off" placeholder="napr. Zelený Košík" value="${esc(v.name)}">
           <small class="err" data-err="name"></small></label>
-        <label class="field"><span>Kategória</span>
-          <input name="kind" maxlength="80" autocomplete="off" placeholder="napr. Potraviny · Vernostný klub" value="${esc(v.kind)}"></label>
         <label class="field"><span>Číslo karty</span>
           <input name="number" maxlength="255" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="8590 1234 5678 1" value="${esc(v.number)}">
           <small class="err" data-err="number"></small></label>
-        <label class="field"><span>Typ kódu</span>
-          <select name="format">${FORMATS.map(([k, l]) => `<option value="${k}" ${k === v.format ? 'selected' : ''}>${l}</option>`).join('')}</select>
-          <small class="err" data-err="format"></small></label>
         <div class="field"><span>Farba</span>
           <div class="swatches" id="swatches">
             ${PALETTE.map((c) => `<button type="button" class="swatch" data-color="${c}" style="background:${c}" aria-label="Farba ${c}" aria-pressed="${c.toUpperCase() === v.color.toUpperCase()}"></button>`).join('')}
             <label class="swatch custom" aria-label="Vlastná farba"><input type="color" id="custom-color" value="${esc(v.color)}"></label>
           </div></div>
-        <label class="field"><span>Majiteľ karty</span>
-          <input name="holder" maxlength="80" autocomplete="name" placeholder="${esc(USER.name)}" value="${esc(v.holder)}"></label>
-        <label class="field"><span>Poznámka</span>
-          <textarea name="note" maxlength="1000" placeholder="napr. Zľava 5 % každý prvý utorok v mesiaci.">${esc(v.note)}</textarea></label>
       </form>
       <div class="form-actions">
         <button class="btn btn-dark" id="save" type="submit" form="form">${editing ? 'Uložiť zmeny' : 'Uložiť kartu'}</button>
@@ -752,11 +739,7 @@
       const { name, value } = e.target;
       if (!name) return;
       v[name] = value;
-      if (name === 'format') formatTouched = true;
-      if (name === 'number' && !formatTouched) {
-        v.format = guessFormat(value);
-        form.elements.format.value = v.format;
-      }
+      if (name === 'number') v.format = guessFormat(value);
       const err = form.querySelector(`[data-err="${name}"]`);
       if (err) err.textContent = '';
       drawPreview();
@@ -774,8 +757,8 @@
       e.preventDefault();
       form.querySelectorAll('.err').forEach((el) => { el.textContent = ''; });
       const payload = {
-        name: v.name.trim(), kind: v.kind?.trim() || null, number: v.number.trim().replace(/\s+(?=\d)/g, ''),
-        format: v.format, color: v.color.toUpperCase(), holder: v.holder?.trim() || null, note: v.note?.trim() || null,
+        name: v.name.trim(), number: v.number.trim().replace(/\s+(?=\d)/g, ''),
+        format: v.format, color: v.color.toUpperCase(),
       };
       // čísla zadané s medzerami (8590 1234 …) ukladáme bez medzier
       if (!/^[\d ]+$/.test(v.number.trim())) payload.number = v.number.trim();
@@ -783,7 +766,7 @@
       const errors = {};
       if (!payload.name) errors.name = 'Zadajte názov obchodu.';
       if (!payload.number) errors.number = 'Zadajte číslo karty.';
-      else if (!codeIsValid(payload.number, payload.format)) errors.format = `Číslo nie je platný ${FORMATS.find(([k]) => k === payload.format)[1]}. Zvoľte iný typ kódu (napr. Code 128).`;
+      else if (!codeIsValid(payload.number, payload.format)) payload.format = guessFormat(payload.number);
       if (Object.keys(errors).length) return showErrors(form, errors);
 
       const btn = $('#save');
