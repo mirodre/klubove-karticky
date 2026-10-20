@@ -272,3 +272,13 @@ form.fields { padding: 12px 20px 0; display: flex; flex-direction: column; gap: 
 .auth-brand { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 8px; text-align: center; }
 .auth-brand .wordmark { font-size: 56px; }
 .tagline { margin: 0; font-size: 16px; font-weight: 600; color: var(--muted); }
+
+/* ---------- inštalácia ---------- */
+.install-head { display: flex; gap: 14px; align-items: center; }
+.install-head img { border-radius: 14px; flex: none; box-shadow: 0 4px 12px rgba(23,23,26,.12); }
+.install-head h2 { margin: 0 0 4px; }
+.steps { margin: 4px 0; padding: 14px 16px 14px 36px; background: var(--surface); border-radius: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.45; }
+.steps .ico { display: inline-flex; vertical-align: -5px; }
+.steps .ico svg { width: 20px; height: 20px; }
+.sheet .btn-ghost { justify-content: center; }
+.sheet .btn-dark { justify-content: center; }

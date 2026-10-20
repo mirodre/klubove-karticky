@@ -784,12 +784,68 @@
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-  function openSettings() {
-    let install = '';
-    if (!isStandalone()) {
-      if (state.installPrompt) install = `<button class="btn btn-light" data-act="install">${I.install}Nainštalovať aplikáciu</button>`;
-      else if (isIOS()) install = '<p class="small">Tip: v Safari ťuknite na <strong>Zdieľať</strong> → <strong>Pridať na plochu</strong> a kartičky budete mať ako aplikáciu.</p>';
+  const isAndroid = () => /android/i.test(navigator.userAgent);
+
+  /* ---------------- inštalácia (PWA) ---------------- */
+  const INSTALL_KEY = 'karty:install-offered';
+  const INSTALL_AGAIN = 3 * 24 * 3600 * 1000; // po zatvorení ponúkneme znova o 3 dni
+
+  function installSteps() {
+    if (isIOS()) {
+      const safari = !/crios|fxios|edgios|opios/i.test(navigator.userAgent);
+      return `<ol class="steps">
+        <li>Ťuknite na <strong>Zdieľať</strong> <span class="ico">${I.share}</span> ${safari ? 'v spodnej lište Safari' : 'v paneli s adresou'}.</li>
+        <li>Posuňte ponuku nižšie a vyberte <strong>Pridať na plochu</strong>.</li>
+        <li>Potvrďte ťuknutím na <strong>Pridať</strong>.</li>
+      </ol>`;
     }
+    return `<ol class="steps">
+      <li>Otvorte ponuku prehliadača <span class="ico">${I.more}</span>.</li>
+      <li>Vyberte <strong>Inštalovať aplikáciu</strong> alebo <strong>Pridať na plochu</strong>.</li>
+      <li>Potvrďte inštaláciu.</li>
+    </ol>`;
+  }
+
+  function openInstall() {
+    const native = !!state.installPrompt;
+    openSheet(`
+      <div class="grabber"></div>
+      <div class="install-head">
+        <img src="/icons/icon-192.png" width="56" height="56" alt="">
+        <div>
+          <h2>Nainštalujte si Kardo</h2>
+          <p class="small">Kartičky budete mať na ploche ako aplikáciu – otvoríte ich jedným ťuknutím a fungujú aj offline.</p>
+        </div>
+      </div>
+      ${native ? `<button class="btn btn-dark" data-act="install">${I.install}Nainštalovať aplikáciu</button>` : installSteps()}
+      <button class="btn btn-ghost" data-act="later">Teraz nie</button>
+    `, {
+      install: async () => {
+        const p = state.installPrompt;
+        state.installPrompt = null;
+        p.prompt();
+        await p.userChoice;
+      },
+      later: () => {},
+    });
+  }
+
+  function offerInstall() {
+    if (isStandalone() || sheetEl) return;
+    if ((location.hash || '#/').replace(/\/$/, '') !== '#') return; // len na zozname kariet, nie pri skenovaní/formulári
+    // Chrome/Edge ponúkne vlastnú inštaláciu cez beforeinstallprompt (ak nepríde, appka už je nainštalovaná);
+    // ručný návod ukážeme len na iOS a na Androide v prehliadačoch bez tejto udalosti (napr. Firefox).
+    const manual = isIOS() || (isAndroid() && !('onbeforeinstallprompt' in window));
+    if (!state.installPrompt && !manual) return;
+    try {
+      if (Date.now() - Number(localStorage.getItem(INSTALL_KEY) || 0) < INSTALL_AGAIN) return;
+      localStorage.setItem(INSTALL_KEY, String(Date.now()));
+    } catch { /* */ }
+    openInstall();
+  }
+
+  function openSettings() {
+    const install = isStandalone() ? '' : `<button class="btn btn-light" data-act="install">${I.install}Nainštalovať aplikáciu</button>`;
     openSheet(`
       <div class="grabber"></div>
       <h2>${esc(USER.name)}</h2>
@@ -799,7 +855,7 @@
       <button class="btn btn-light" data-act="import">${I.upload}Obnoviť zo zálohy</button>
       <button class="btn btn-light" data-act="logout">${I.logout}Odhlásiť sa</button>
     `, {
-      install: async () => { state.installPrompt.prompt(); await state.installPrompt.userChoice; state.installPrompt = null; },
+      install: () => setTimeout(openInstall),
       export: exportBackup,
       import: importBackup,
       logout,
@@ -860,7 +916,9 @@
   }
 
   /* ---------------- štart ---------------- */
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); state.installPrompt = e; });
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); state.installPrompt = e; setTimeout(offerInstall, 1500); });
+  window.addEventListener('appinstalled', () => { state.installPrompt = null; closeSheet(); toast('Kardo je nainštalované na ploche.'); });
+  setTimeout(offerInstall, 2500);
   window.addEventListener('hashchange', route);
   window.addEventListener('online', () => sync().then((ok) => { if (ok && !location.hash.match(/^#\/(new|edit|add)/)) route(); }));
 
