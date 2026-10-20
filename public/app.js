@@ -71,6 +71,9 @@
 
   function setThemeColor(color) {
     document.querySelector('meta[name="theme-color"]').setAttribute('content', color);
+    // iOS (najmä nainštalovaná appka) farbí lištu so stavom podľa pozadia stránky, nie podľa theme-color
+    document.documentElement.style.background = color;
+    document.body.style.background = color;
   }
 
   function hexToRgb(hex) {
