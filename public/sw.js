@@ -2,6 +2,7 @@
 const VERSION = 'v3';
 const STATIC = `karty-static-${VERSION}`;
 const PAGES = 'karty-pages';
+const LOGOS = 'karty-logos';
 
 // Súbory bez verzie v URL – uložia sa pri inštalácii.
 const ASSETS = [
@@ -73,6 +74,20 @@ self.addEventListener('fetch', (event) => {
         } catch {
           return (await cache.match(url.pathname, { ignoreSearch: true })) || Response.error();
         }
+      }),
+    );
+    return;
+  }
+
+  // Logá obchodov: z cache, pri prvom použití sa uložia (offline ostanú).
+  if (url.pathname.startsWith('/logos/')) {
+    event.respondWith(
+      caches.open(LOGOS).then(async (cache) => {
+        const cached = await cache.match(url.pathname);
+        if (cached) return cached;
+        const res = await fetch(request);
+        if (res.ok) cache.put(url.pathname, res.clone());
+        return res;
       }),
     );
     return;

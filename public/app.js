@@ -12,6 +12,98 @@
 
   const PALETTE = ['#1F4D3A', '#2F5DA8', '#E4572E', '#E9C46A', '#D9CFF2', '#17171A', '#FFFFFF', '#8E3B5B', '#0F7C8A', '#F4A259'];
 
+  /* Najpoužívanejšie obchody v ČR a SR: [názov, farba karty, logo v /logos/ (alebo null), ďalšie názvy] */
+  const BRANDS = [
+    // potraviny
+    ['Lidl', '#0050AA', 'lidl.svg', ['lidl plus']],
+    ['Kaufland', '#E10915', 'kaufland.svg', ['kaufland card']],
+    ['Tesco', '#00539F', 'tesco.png', ['tesco clubcard', 'clubcard']],
+    ['Billa', '#FFE500', 'billa.png', ['billa clubkarte', 'jo jo']],
+    ['Albert', '#009FE3', 'albert.png', ['moj albert', 'muj albert']],
+    ['Penny', '#CD1719', 'penny.png', ['penny market']],
+    ['Globus', '#00873D', 'globus.png', []],
+    ['COOP Jednota', '#E30613', 'coop-jednota.png', ['coop', 'jednota']],
+    ['COOP', '#EE7203', 'coop.png', ['coop cz', 'coop centrum', 'coop druzstvo']],
+    ['Terno', '#00A651', 'terno.png', ['terno real']],
+    ['Fresh', '#7AB929', null, ['fresh plus', 'freshplus']],
+    ['Žabka', '#00703C', 'zabka.png', []],
+    ['Rohlík', '#3C9A3C', 'rohlik.png', ['rohlik cz', 'rohlik sk']],
+    ['Košík', '#6F2C91', 'kosik.png', ['kosik cz']],
+    ['Makro', '#0F2D69', 'makro.png', []],
+    ['Metro', '#002D72', 'metro.png', ['metro cash carry']],
+    // drogérie a kozmetika
+    ['dm', '#002878', 'dm.png', ['dm drogerie', 'dm drogeria', 'moje dm', 'active beauty']],
+    ['Rossmann', '#C8102E', 'rossmann.png', []],
+    ['Teta', '#E6007E', 'teta.png', ['teta drogerie']],
+    ['Douglas', '#9BDCD3', 'douglas.png', []],
+    ['Notino', '#17171A', 'notino.png', []],
+    ['Sephora', '#17171A', 'sephora.png', []],
+    ['Marionnaud', '#17171A', 'marionnaud.png', []],
+    ['Yves Rocher', '#0B4D33', 'yves-rocher.png', []],
+    // lekárne
+    ['Dr.Max', '#009A44', 'drmax.png', ['dr max', 'drmax', 'lekaren dr max', 'lekarna dr max']],
+    ['BENU', '#00A651', 'benu.png', ['lekaren benu', 'lekarna benu']],
+    ['Pilulka', '#0B5F4A', 'pilulka.png', []],
+    // dom a záhrada
+    ['IKEA', '#0058A3', 'ikea.svg', ['ikea family']],
+    ['Hornbach', '#F27C00', 'hornbach.png', []],
+    ['OBI', '#F26F21', 'obi.png', []],
+    ['Bauhaus', '#E30613', 'bauhaus.png', []],
+    ['Mountfield', '#D0021B', 'mountfield.png', []],
+    ['SIKO', '#FFDD00', 'siko.png', []],
+    ['JYSK', '#143C8C', 'jysk.png', []],
+    ['Möbelix', '#36A9D4', 'mobelix.png', ['mobelix']],
+    ['XXXLutz', '#E3000F', 'xxxlutz.png', ['xxx lutz', 'lutz']],
+    ['Tedi', '#FFED00', 'tedi.png', []],
+    ['Action', '#1A5AD7', 'action.png', []],
+    ['Pepco', '#4A4FE0', 'pepco.png', []],
+    ['Flying Tiger', '#17171A', 'flying-tiger.png', ['flying tiger copenhagen']],
+    // šport, móda, obuv
+    ['Decathlon', '#3643BA', 'decathlon.png', []],
+    ['Sportisimo', '#0055A5', 'sportisimo.png', []],
+    ['Intersport', '#00398B', 'intersport.png', []],
+    ['Hervis', '#E3000F', 'hervis.png', []],
+    ['H&M', '#E50010', 'hm.png', ['hm', 'h m']],
+    ['Reserved', '#17171A', 'reserved.png', []],
+    ['Cropp', '#17171A', 'cropp.png', []],
+    ['Sinsay', '#22252A', null, []],
+    ['C&A', '#0E4FA0', 'ca.png', ['c a', 'ca']],
+    ['Lindex', '#C8102E', 'lindex.png', []],
+    ['New Yorker', '#17171A', 'new-yorker.png', ['newyorker']],
+    ['KiK', '#E3000F', 'kik.png', []],
+    ['Takko', '#FFE000', null, ['takko fashion']],
+    ['CCC', '#17171A', 'ccc.png', []],
+    ['Deichmann', '#00843D', 'deichmann.png', []],
+    // elektro a e-shopy
+    ['Alza', '#0A80D6', 'alza.png', ['alza cz', 'alza sk', 'alzaplus']],
+    ['Datart', '#E3000F', null, []],
+    ['Electro World', '#002A6C', 'electro-world.png', ['electroworld']],
+    ['NAY', '#00A0E3', 'nay.png', ['nay elektrodom']],
+    ['OKAY', '#8DB43F', 'okay.png', []],
+    ['Planeo', '#1446A0', 'planeo.png', ['planeo elektro']],
+    ['Allegro', '#FF5A00', 'allegro.png', ['mall', 'mall cz', 'mall sk']],
+    ['Tchibo', '#002E5D', 'tchibo.png', []],
+    // čerpacie stanice
+    ['Shell', '#FFD500', 'shell.png', ['shell clubsmart', 'clubsmart']],
+    ['OMV', '#00D25F', 'omv.png', ['omv mytankstelle']],
+    ['MOL', '#DA291C', 'mol.png', ['mol move']],
+    ['Slovnaft', '#006F3C', null, ['slovnaft bonus']],
+    ['Orlen', '#E30613', 'orlen.png', ['orlen benzina', 'benzina']],
+    // jedlo a káva
+    ["McDonald's", '#DA291C', 'mcdonalds.png', ['mcdonalds', 'mcdonald']],
+    ['KFC', '#A3080C', 'kfc.png', []],
+    ['Starbucks', '#00704A', 'starbucks.png', []],
+    ['Costa Coffee', '#6D1F37', null, ['costa']],
+    // knihy
+    ['Martinus', '#D41F31', 'martinus.png', []],
+    ['Panta Rhei', '#002F5F', 'panta-rhei.png', ['pantarhei']],
+    ['Luxor', '#17171A', 'luxor.png', ['neoluxor']],
+    ['Knihy Dobrovský', '#17171A', 'dobrovsky.png', ['dobrovsky']],
+    // zvieratá
+    ['Pet Center', '#00B140', 'pet-center.png', ['petcenter']],
+    ['Super zoo', '#FFE000', 'super-zoo.png', ['superzoo']],
+  ].map(([name, color, logo, aliases]) => ({ name, color, logo: logo && `/logos/${logo}`, keys: [name, ...aliases].map(normalize) }));
+
   const state = {
     cards: readCache(),
     synced: false,      // dáta zo servera aspoň raz načítané
@@ -103,6 +195,35 @@
     if (!words.length) return '?';
     if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
     return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
+  /** „Môj Albert!“ → „moj albert“ (bez diakritiky a interpunkcie). */
+  function normalize(s) {
+    return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  /** Obchod podľa začiatku názvu karty, celé slová, najdlhšia zhoda (napr. „Tesco Clubcard“ → Tesco, „Zelený Košík“ nie). */
+  function findBrand(name) {
+    const n = normalize(name);
+    if (!n) return null;
+    const padded = ` ${n} `, compact = n.replace(/ /g, '');
+    let best = null, bestLen = 0;
+    for (const b of BRANDS) {
+      for (const k of b.keys) {
+        const hit = padded.startsWith(` ${k} `) || (k.length >= 4 && compact === k.replace(/ /g, ''));
+        if (hit && k.length > bestLen) { best = b; bestLen = k.length; }
+      }
+    }
+    return best;
+  }
+
+  /** Logo obchodu, ak ho poznáme; inak iniciály. Ak sa obrázok nenačíta, ostanú iniciály. */
+  function logoInner(name) {
+    const brand = findBrand(name);
+    const text = `<span>${esc(initials(name))}</span>`;
+    if (!brand?.logo) return { cls: '', html: text };
+    return { cls: ' has-img', html: text + `<img src="${brand.logo}" alt="" onerror="this.parentNode.classList.remove('has-img');this.remove()">` };
   }
 
   function groupNumber(n) {
@@ -313,13 +434,14 @@
   /* ---------------- zoznam ---------------- */
   function heroCard(card) {
     const t = theme(card.color);
+    const lg = logoInner(card.name);
     return `<a href="#/card/${card.id}" class="hero-card" style="background:${t.bg};color:${t.fg}">
       <div class="hero-top">
         <div style="min-width:0">
           <span class="hero-name">${esc(card.name)}</span>
           <span class="hero-kind" style="color:${t.sub};opacity:1">${esc(card.kind || 'Vernostná karta')}</span>
         </div>
-        <div class="logo" style="color:${t.light ? t.fg : t.bg};background:${t.light ? t.chip : '#FFFFFF'}">${esc(initials(card.name))}</div>
+        <div class="logo${lg.cls}" style="color:${t.light ? t.fg : t.bg};background:${t.light ? t.chip : '#FFFFFF'}">${lg.html}</div>
       </div>
       <div class="hero-bottom">
         <span class="hero-number">${esc(groupNumber(card.number))}</span>
@@ -330,8 +452,9 @@
 
   function tile(card) {
     const t = theme(card.color);
+    const lg = logoInner(card.name);
     return `<a href="#/card/${card.id}" class="card-tile" style="background:${t.bg};color:${t.fg}">
-      <div class="chip" style="background:${t.chip}">${esc(initials(card.name))}</div>
+      <div class="chip${lg.cls}" style="background:${t.chip}">${lg.html}</div>
       <div style="min-width:0"><span class="tile-name">${esc(card.name)}</span><span class="tile-kind">${esc(card.kind || 'Vernostná karta')}</span></div>
     </a>`;
   }
@@ -462,6 +585,7 @@
   /* ---------------- detail ---------------- */
   function renderDetail(card) {
     const t = theme(card.color);
+    const lg = logoInner(card.name);
     let asQR = false;
     setThemeColor(t.bg);
 
@@ -474,7 +598,7 @@
         </div>
       </header>
       <div class="detail-title">
-        <div class="logo" style="color:${t.light ? t.fg : t.bg};background:${t.light ? t.chip : '#FFFFFF'}">${esc(initials(card.name))}</div>
+        <div class="logo${lg.cls}" style="color:${t.light ? t.fg : t.bg};background:${t.light ? t.chip : '#FFFFFF'}">${lg.html}</div>
         <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
           <h1>${esc(card.name)}</h1>
           <span class="sub" style="color:${t.sub};opacity:1">${esc(card.kind || 'Vernostná karta')}</span>
@@ -796,6 +920,9 @@
     if (!editing && state.draft?.number && !state.draft.format) draft.format = guessFormat(draft.number);
     state.draft = null;
     const v = { ...draft };
+    // farbu podľa obchodu dosadíme, kým si ju používateľ sám nezvolí (pri úprave len pri zmene obchodu)
+    let colorPicked = false;
+    const originalBrand = editing ? findBrand(card.name) : null;
 
     app.innerHTML = `<div class="screen form-screen">
       <header class="form-header">
@@ -805,7 +932,8 @@
       <div class="preview-card" id="preview"></div>
       <form class="fields" id="form" novalidate>
         <label class="field"><span>Názov obchodu</span>
-          <input name="name" maxlength="80" required autocomplete="off" placeholder="napr. Zelený Košík" value="${esc(v.name)}">
+          <input name="name" maxlength="80" required autocomplete="off" list="brand-list" placeholder="napr. Lidl, Billa, dm…" value="${esc(v.name)}">
+          <datalist id="brand-list">${BRANDS.map((b) => `<option value="${esc(b.name)}">`).join('')}</datalist>
           <small class="err" data-err="name"></small></label>
         <label class="field"><span>Číslo karty</span>
           <input name="number" maxlength="255" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="8590 1234 5678 1" value="${esc(v.number)}">
@@ -837,14 +965,18 @@
       if (name === 'number') v.format = guessFormat(value);
       const err = form.querySelector(`[data-err="${name}"]`);
       if (err) err.textContent = '';
-      drawPreview();
+      const brand = name === 'name' && findBrand(value);
+      if (brand && brand !== originalBrand && !colorPicked) pickColor(brand.color, false);
+      else drawPreview();
     });
 
-    const pickColor = (c) => {
+    function pickColor(c, byUser = true) {
       v.color = c;
+      if (byUser) colorPicked = true;
+      $('#custom-color').value = c.toLowerCase();
       form.querySelectorAll('.swatch[data-color]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.color.toUpperCase() === c.toUpperCase())));
       drawPreview();
-    };
+    }
     $('#swatches').addEventListener('click', (e) => { const b = e.target.closest('[data-color]'); if (b) pickColor(b.dataset.color); });
     $('#custom-color').addEventListener('input', (e) => pickColor(e.target.value.toUpperCase()));
 
