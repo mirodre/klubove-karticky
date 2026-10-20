@@ -46,6 +46,7 @@
     logout: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
     trash: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>',
     share: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14"/></svg>',
+    paste: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>',
     install: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 7v7M9 11l3 3 3-3"/></svg>',
   };
 
@@ -361,10 +362,12 @@
       </div>
       <div class="actions">
         <a href="#/add" class="btn btn-dark">${I.barcode}Naskenovať prvú kartu</a>
+        <button class="btn btn-ghost" id="paste-empty">${I.paste}Vložiť screenshot karty</button>
         <button class="btn btn-ghost" id="restore">Obnoviť zo zálohy</button>
       </div>
     </div>`;
     $('#restore').addEventListener('click', importBackup);
+    $('#paste-empty').addEventListener('click', pasteFromClipboard);
     $('#settings').addEventListener('click', openSettings);
   }
 
@@ -515,19 +518,73 @@
     reader.setHints(hints);
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    return async (source) => {
+    // crop = [x, y, w, h] v pomere 0–1; still = statický obrázok (skúsime aj druhý binarizér)
+    return async (source, { maxSide = 1280, crop = [0, 0, 1, 1], still = false } = {}) => {
       const w = source.videoWidth || source.naturalWidth || source.width;
       const h = source.videoHeight || source.naturalHeight || source.height;
       if (!w || !h) return null;
-      const scale = Math.min(1, 1280 / Math.max(w, h));
-      canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
-      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-      try {
-        const bitmap = new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(canvas)));
-        const res = reader.decodeWithState(bitmap);
-        return { number: res.getText(), format: ZXING_MAP[Z.BarcodeFormat[res.getBarcodeFormat()]] || 'CODE128' };
-      } catch { return null; }
+      const [cx, cy, cw, ch] = [crop[0] * w, crop[1] * h, crop[2] * w, crop[3] * h];
+      const scale = Math.min(1, maxSide / Math.max(cw, ch));
+      canvas.width = Math.round(cw * scale); canvas.height = Math.round(ch * scale);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(source, cx, cy, cw, ch, 0, 0, canvas.width, canvas.height);
+      const binarizers = still ? [Z.HybridBinarizer, Z.GlobalHistogramBinarizer] : [Z.HybridBinarizer];
+      for (const B of binarizers) {
+        try {
+          const bitmap = new Z.BinaryBitmap(new B(new Z.HTMLCanvasElementLuminanceSource(canvas)));
+          const res = reader.decodeWithState(bitmap);
+          return { number: res.getText(), format: ZXING_MAP[Z.BarcodeFormat[res.getBarcodeFormat()]] || 'CODE128' };
+        } catch { /* ďalší pokus */ }
+      }
+      return null;
     };
+  }
+
+  /** Kód z fotky / screenshotu. Screenshoty z iných apiek majú kód často malý, preto skúšame aj výrezy. */
+  async function detectInImage(blob) {
+    const img = new Image();
+    img.src = URL.createObjectURL(blob);
+    try {
+      await img.decode();
+      const detect = await createDetector();
+      const attempts = [
+        {},
+        { maxSide: 2400 },
+        // horizontálne pásy (karta býva v hornej/strednej časti screenshotu)
+        ...[0, 0.2, 0.4, 0.6].map((y) => ({ maxSide: 1600, crop: [0, y, 1, 0.4] })),
+        { maxSide: 1600, crop: [0.1, 0.25, 0.8, 0.5] },
+      ];
+      for (const opts of attempts) {
+        const hit = await detect(img, { ...opts, still: true }).catch(() => null);
+        if (hit && hit.number) return hit;
+      }
+      return null;
+    } finally { URL.revokeObjectURL(img.src); }
+  }
+
+  let importing = false;
+  async function addFromImage(blob) {
+    if (importing) return;
+    importing = true;
+    toast('Hľadám kód na obrázku…');
+    try {
+      const hit = await detectInImage(blob);
+      if (hit) found(hit); else toast('Na obrázku sme nenašli čiarový ani QR kód.');
+    } catch { toast('Obrázok sa nepodarilo načítať.'); }
+    finally { importing = false; }
+  }
+
+  /** Obrázok zo schránky cez tlačidlo (iOS/Android sa spýtajú „Vložiť“). */
+  async function pasteFromClipboard() {
+    if (!navigator.clipboard?.read) return toast('Prehliadač nepodporuje čítanie schránky. Použite „Načítať z fotky“.');
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find((t) => t.startsWith('image/'));
+        if (type) return addFromImage(await item.getType(type));
+      }
+      toast('V schránke nie je obrázok. Skopírujte screenshot a skúste znova.');
+    } catch { toast('Schránku sa nepodarilo prečítať.'); }
   }
 
   function found(hit) {
@@ -564,7 +621,8 @@
         <div class="grabber"></div>
         <span class="section-title">Alebo</span>
         <button class="btn btn-light" id="manual">${I.type}Zadať číslo ručne</button>
-        <button class="btn btn-light" id="photo">${I.photo}Načítať z fotky</button>
+        <button class="btn btn-light" id="photo">${I.photo}Načítať z fotky / screenshotu</button>
+        <button class="btn btn-light" id="paste">${I.paste}Vložiť obrázok zo schránky</button>
         <input type="file" id="file" accept="image/*" hidden>
       </div>
     </div>`;
@@ -575,18 +633,12 @@
 
     $('#manual').addEventListener('click', () => { state.draft = null; go('/new'); });
     $('#photo').addEventListener('click', () => $('#file').click());
+    $('#paste').addEventListener('click', pasteFromClipboard);
     $('#file').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      try {
-        await img.decode();
-        const detect = await createDetector();
-        const hit = await detect(img);
-        if (hit) found(hit); else toast('Na fotke sme nenašli čiarový ani QR kód.');
-      } catch { toast('Fotku sa nepodarilo načítať.'); }
-      finally { URL.revokeObjectURL(img.src); e.target.value = ''; }
+      await addFromImage(file);
+      e.target.value = '';
     });
 
     state.cleanup = () => {
@@ -920,6 +972,14 @@
   window.addEventListener('appinstalled', () => { state.installPrompt = null; closeSheet(); toast('Kardo je nainštalované na ploche.'); });
   setTimeout(offerInstall, 2500);
   window.addEventListener('hashchange', route);
+  // Ctrl/Cmd+V so screenshotom kdekoľvek okrem formulára pridá kartu
+  document.addEventListener('paste', (e) => {
+    if (location.hash.match(/^#\/(new|edit)/) || e.target.closest?.('input, textarea')) return;
+    const file = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'))?.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    addFromImage(file);
+  });
   window.addEventListener('online', () => sync().then((ok) => { if (ok && !location.hash.match(/^#\/(new|edit|add)/)) route(); }));
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
