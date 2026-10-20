@@ -318,6 +318,11 @@ form.fields { padding: 12px 20px 0; display: flex; flex-direction: column; gap: 
 .overlay .sheet { max-height: 100dvh; overflow-y: auto; }
 
 /* logo obchodu namiesto iniciál */
-.logo.has-img, .chip.has-img { background: #fff !important; overflow: hidden; }
+.logo.has-img, .chip.has-img {
+  background: #fff !important; overflow: hidden; padding: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12), 0 4px 12px rgba(0, 0, 0, .10);
+}
+.chip.has-img { padding: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
+.detail-title .logo.has-img { padding: 8px; }
 .logo.has-img > span, .chip.has-img > span { display: none; }
-.logo img, .chip img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.logo img, .chip img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 4px; }

@@ -79,15 +79,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Logá obchodov: z cache, pri prvom použití sa uložia (offline ostanú).
+  // Logá obchodov: z cache (aj offline), na pozadí aktualizovať.
   if (url.pathname.startsWith('/logos/')) {
     event.respondWith(
       caches.open(LOGOS).then(async (cache) => {
         const cached = await cache.match(url.pathname);
-        if (cached) return cached;
-        const res = await fetch(request);
-        if (res.ok) cache.put(url.pathname, res.clone());
-        return res;
+        const network = fetch(request)
+          .then((res) => { if (res.ok) cache.put(url.pathname, res.clone()); return res; })
+          .catch(() => cached || Response.error());
+        return cached || network;
       }),
     );
     return;

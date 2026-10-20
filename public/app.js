@@ -218,6 +218,13 @@
     return best;
   }
 
+  /** Farba karty – ak má známy obchod a farbu len z predvolenej palety, použije sa farba obchodu. */
+  function cardColor(card) {
+    const brand = findBrand(card.name);
+    const generic = PALETTE.some((c) => c.toUpperCase() === String(card.color).toUpperCase());
+    return brand && generic ? brand.color : card.color;
+  }
+
   /** Logo obchodu, ak ho poznáme; inak iniciály. Ak sa obrázok nenačíta, ostanú iniciály. */
   function logoInner(name) {
     const brand = findBrand(name);
@@ -433,7 +440,7 @@
 
   /* ---------------- zoznam ---------------- */
   function heroCard(card) {
-    const t = theme(card.color);
+    const t = theme(cardColor(card));
     const lg = logoInner(card.name);
     return `<a href="#/card/${card.id}" class="hero-card" style="background:${t.bg};color:${t.fg}">
       <div class="hero-top">
@@ -451,7 +458,7 @@
   }
 
   function tile(card) {
-    const t = theme(card.color);
+    const t = theme(cardColor(card));
     const lg = logoInner(card.name);
     return `<a href="#/card/${card.id}" class="card-tile" style="background:${t.bg};color:${t.fg}">
       <div class="chip${lg.cls}" style="background:${t.chip}">${lg.html}</div>
@@ -584,7 +591,7 @@
 
   /* ---------------- detail ---------------- */
   function renderDetail(card) {
-    const t = theme(card.color);
+    const t = theme(cardColor(card));
     const lg = logoInner(card.name);
     let asQR = false;
     setThemeColor(t.bg);
@@ -912,7 +919,7 @@
   function renderForm(card) {
     setThemeColor('#F3F2EE');
     const editing = !!card;
-    const draft = editing ? card : {
+    const draft = editing ? { ...card, color: cardColor(card) } : {
       name: '', number: state.draft?.number || '', format: state.draft?.format || 'CODE128',
       color: PALETTE[state.cards.length % PALETTE.length],
     };
