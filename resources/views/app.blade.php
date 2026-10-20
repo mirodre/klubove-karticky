@@ -3,7 +3,7 @@
 <head>
     @include('layouts.head')
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Klubové kartičky</title>
+    <title>Kardo</title>
 </head>
 <body>
 <main id="app" aria-live="polite"></main>

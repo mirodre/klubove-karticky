@@ -1,4 +1,7 @@
-# Klubové kartičky
+# Kardo
+
+*Your cards. Already there.*
+
 
 PWA aplikácia na klubové a vernostné kartičky – naskenuješ kartu kamerou mobilu a pri pokladni ju ukážeš ako čiarový alebo QR kód. Funguje aj offline.
 

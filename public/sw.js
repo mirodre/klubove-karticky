@@ -1,5 +1,5 @@
 /* Service worker – app shell offline, dáta rieši app.js (localStorage). */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const STATIC = `karty-static-${VERSION}`;
 const PAGES = 'karty-pages';
 
@@ -10,6 +10,7 @@ const ASSETS = [
   '/vendor/zxing.min.js',
   '/fonts/manrope-latin.woff2',
   '/fonts/manrope-latin-ext.woff2',
+  '/icons/logo.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',

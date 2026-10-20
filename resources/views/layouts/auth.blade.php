@@ -2,19 +2,15 @@
 <html lang="sk">
 <head>
     @include('layouts.head')
-    <title>@yield('title') · Klubové kartičky</title>
+    <title>@yield('title') · Kardo</title>
 </head>
 <body>
 <main class="screen empty auth">
-    <h1 class="h1">Moje karty</h1>
-
-    <div class="auth-hero" aria-hidden="true">
-        <div class="stack small">
-            <div class="c1"></div>
-            <div class="c2"></div>
-            <div class="c3"><div class="sq"></div><div class="bars"><i style="width:3px"></i><i style="width:6px"></i><i style="width:3px"></i><i style="width:3px;background:none"></i><i style="width:6px"></i><i style="width:3px"></i><i style="width:9px"></i><i style="width:3px;background:none"></i><i style="width:3px"></i><i style="width:6px"></i></div></div>
-        </div>
-    </div>
+    <header class="auth-brand">
+        <img src="/icons/logo.svg" alt="" width="88" height="88">
+        <h1 class="wordmark">kardo<span>.</span></h1>
+        <p class="tagline">Your cards. Already there.</p>
+    </header>
 
     @yield('content')
 </main>

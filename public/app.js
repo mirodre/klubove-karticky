@@ -1,4 +1,4 @@
-/* Klubové kartičky – PWA frontend (bez build kroku). */
+/* Kardo – PWA frontend (bez build kroku). */
 (() => {
   'use strict';
 
@@ -25,6 +25,8 @@
   };
 
   /* ---------------- ikony ---------------- */
+  const BRAND = '<div class="brand"><img src="/icons/logo.svg" alt="" width="26" height="26"><span class="wordmark">kardo<span>.</span></span></div>';
+
   const I = {
     gear: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
     search: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
@@ -285,6 +287,7 @@
 
     app.innerHTML = `<div class="screen">
       <header class="list-header">
+        ${BRAND}
         <div class="title-row">
           <div style="display:flex;flex-direction:column;gap:2px">
             <span class="count">${plural(state.cards.length)}</span>
@@ -335,12 +338,13 @@
   }
 
   function renderLoading() {
-    app.innerHTML = `<div class="screen empty"><h1 class="h1">Moje karty</h1>
+    app.innerHTML = `<div class="screen empty">${BRAND}<h1 class="h1">Moje karty</h1>
       <div class="empty-body"><p style="color:var(--muted);font-weight:600">Načítavam karty…</p></div></div>`;
   }
 
   function renderEmpty() {
     app.innerHTML = `<div class="screen empty">
+      ${BRAND}
       <div class="title-row">
         <h1 class="h1">Moje karty</h1>
         <button class="icon-btn" id="settings" aria-label="Nastavenia">${I.gear}</button>

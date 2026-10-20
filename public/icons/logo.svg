@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Kardo">
+  <defs>
+    <linearGradient id="kardo-stem" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C4222A"/>
+      <stop offset="1" stop-color="#6E0E13"/>
+    </linearGradient>
+  </defs>
+  <rect x="20" y="12" width="36" height="96" rx="11" fill="url(#kardo-stem)"/>
+  <path d="M50 60 86 27" stroke="#E3262B" stroke-width="30" stroke-linecap="round" opacity=".9"/>
+  <path d="M50 60 86 93" stroke="#F0726A" stroke-width="30" stroke-linecap="round" opacity=".85"/>
+</svg>

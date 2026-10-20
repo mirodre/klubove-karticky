@@ -25,6 +25,8 @@
   --dark: #121214;
   --scan: #6FD39B;
   --danger: #C4352B;
+  --brand: #7A1418;
+  --brand-dot: #E3262B;
   --top: calc(env(safe-area-inset-top, 0px) + 20px);
   --bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
@@ -256,9 +258,17 @@ form.fields { padding: 12px 20px 0; display: flex; flex-direction: column; gap: 
 
 /* ---------- prihlásenie / registrácia ---------- */
 .auth { gap: 8px; }
-.auth-hero { display: flex; justify-content: center; padding: 8px 0 0; }
-.stack.small { transform: scale(.7); transform-origin: center top; height: 140px; }
 .auth-form { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
 .auth-form .empty-text { margin-bottom: 6px; }
 .auth-form .actions { margin-top: 8px; }
 .form-error { margin: 0; color: var(--danger); font-weight: 600; font-size: 14px; }
+
+/* ---------- značka Kardo ---------- */
+.wordmark { margin: 0; color: var(--brand); font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+.wordmark span { color: var(--brand-dot); }
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand .wordmark { font-size: 22px; }
+.screen.empty > .brand { margin-bottom: 12px; }
+.auth-brand { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 8px; text-align: center; }
+.auth-brand .wordmark { font-size: 56px; }
+.tagline { margin: 0; font-size: 16px; font-weight: 600; color: var(--muted); }
