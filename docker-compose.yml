@@ -31,6 +31,7 @@ services:
   mysql:
     image: mysql:8.4
     restart: unless-stopped
+    command: --innodb-buffer-pool-size=16M --innodb-log-buffer-size=4M --performance-schema=OFF --max-connections=20
     environment:
       MYSQL_DATABASE: karty
       MYSQL_USER: karty
